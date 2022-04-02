@@ -1,0 +1,394 @@
+     1                                  ;****************************************************************************************************************************
+     2                                  ;Author Information:                                                                                                        *
+     3                                  ; Author: Luis alvarado                                                                                                     *
+     4                                  ; Email: luisalvarado@csu,fullerton.edu                                                                                     *
+     5                                  ; Section: CPSC 240-07                                                                                                      *
+     6                                  ;                                                                                                                           *
+     7                                  ;Program Information:                                                                                                       *
+     8                                  ; Program Name: Gravitational
+     9                                  ; Language: x86 Assembly                                                                                            *
+    10                                  ; Files: Driver,cpp, compute_free_fall_time.asm, isFloat.cpp, run.sh                                                        *
+    11                                  ; This File: Gravitational                                                                                                  *
+    12                                  ; Purpose: 1) Validating float inputs 2) Store constant onto program 3) how to                                              *
+    13                                  ;             multiply and divide float number stored in xmm register.                                                      *
+    14                                  ;                                                                                                                           *
+    15                                  ;Copyright(c) 2022 Luis Alvarado                                                                                            *
+    16                                  ;This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License  *
+    17                                  ;version 3 as published by the Free Software Foundation.                                                                    *
+    18                                  ;This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied         *
+    19                                  ;Warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.     *
+    20                                  ;A copy of the GNU General Public License v3 is available here:  <https://www.gnu.org/licenses/>.                           *
+    21                                  ;To run program, use : "./run.sh"                                                                                           *
+    22                                  ;****************************************************************************************************************************
+    23                                  extern printf
+    24                                  extern scanf
+    25                                  extern fgets
+    26                                  extern stdin
+    27                                  extern strlen
+    28                                  extern isFloat
+    29                                  extern atof
+    30                                  
+    31                                  INPUT_LEN equ 256                         ; max of bytes for name, job, and user
+    32                                  
+    33                                  global height                             ;Global Scope
+    34                                  
+    35                                  segment .data                             ; where we declare our variables / text (Initialized data)
+    36 00000000 9A99999999992340        value: dq 0x402399999999999A              ; declaring 9.8 in hex
+    37                                  
+    38 00000008 4966206572726F7273-     welcome db "If errors are discovered please report them to Luis at luis.alvarado@csu.fullerton.edu for a rapid "
+    38 00000011 206172652064697363-
+    38 0000001A 6F766572656420706C-
+    38 00000023 65617365207265706F-
+    38 0000002C 7274207468656D2074-
+    38 00000035 6F204C756973206174-
+    38 0000003E 206C7569732E616C76-
+    38 00000047 617261646F40637375-
+    38 00000050 2E66756C6C6572746F-
+    38 00000059 6E2E65647520666F72-
+    38 00000062 206120726170696420 
+    39 0000006B 7570646174652E2041-             db "update. At Columbia, inc, the customer comes first.",10, 0
+    39 00000074 7420436F6C756D6269-
+    39 0000007D 612C20696E632C2074-
+    39 00000086 686520637573746F6D-
+    39 0000008F 657220636F6D657320-
+    39 00000098 66697273742E0A00   
+    40                                  
+    41 000000A0 506C6561736520656E-     name_last db "Please enter your first and last names: ",0
+    41 000000A9 74657220796F757220-
+    41 000000B2 666972737420616E64-
+    41 000000BB 206C617374206E616D-
+    41 000000C4 65733A2000         
+    42                                  
+    43 000000C9 257300                  name_last_input db "%s", 0
+    44                                  
+    45 000000CC 506C6561736520656E-     job_title db "Please enter your job title(Nurse, Programmer, Teacher, Carpenter, Mechanic, Bus Driver,"
+    45 000000D5 74657220796F757220-
+    45 000000DE 6A6F62207469746C65-
+    45 000000E7 284E757273652C2050-
+    45 000000F0 726F6772616D6D6572-
+    45 000000F9 2C2054656163686572-
+    45 00000102 2C2043617270656E74-
+    45 0000010B 65722C204D65636861-
+    45 00000114 6E69632C2042757320-
+    45 0000011D 4472697665722C     
+    46 00000124 426172697374612C20-               db "Barista, Hair Dresser, Acrobat, Senator, Sales Clerk, etc: ",0
+    46 0000012D 486169722044726573-
+    46 00000136 7365722C204163726F-
+    46 0000013F 6261742C2053656E61-
+    46 00000148 746F722C2053616C65-
+    46 00000151 7320436C65726B2C20-
+    46 0000015A 6574633A2000       
+    47                                  
+    48 00000160 257300                  job_title_input db "%s", 0
+    49                                  
+    50 00000163 5468616E6B20796F75-     thanks db "Thank you %s. We appreciate your business." ,10,0
+    50 0000016C 2025732E2057652061-
+    50 00000175 707072656369617465-
+    50 0000017E 20796F757220627573-
+    50 00000187 696E6573732E0A00   
+    51                                  
+    52 0000018F 576520756E64657273-     vantage db "We understand that you plan to drop a marbel from a high vantage point." ,10,0
+    52 00000198 74616E642074686174-
+    52 000001A1 20796F7520706C616E-
+    52 000001AA 20746F2064726F7020-
+    52 000001B3 61206D617262656C20-
+    52 000001BC 66726F6D2061206869-
+    52 000001C5 67682076616E746167-
+    52 000001CE 6520706F696E742E0A-
+    52 000001D7 00                 
+    53                                  
+    54 000001D8 506C6561736520656E-     height_text db "Please enter the height of the marbel above the ground surface in meters: ",0
+    54 000001E1 746572207468652068-
+    54 000001EA 6569676874206F6620-
+    54 000001F3 746865206D61726265-
+    54 000001FC 6C2061626F76652074-
+    54 00000205 68652067726F756E64-
+    54 0000020E 207375726661636520-
+    54 00000217 696E206D6574657273-
+    54 00000220 3A2000             
+    55                                  
+    56 00000223 257300                  height_input db "%s", 0
+    57                                  
+    58                                  ;VALID FLOAT
+    59 00000226 546865206D61726265-     drop db "The marbel you drop from that height will reach earth after %lf seconds.",10,0
+    59 0000022F 6C20796F752064726F-
+    59 00000238 702066726F6D207468-
+    59 00000241 617420686569676874-
+    59 0000024A 2077696C6C20726561-
+    59 00000253 636820656172746820-
+    59 0000025C 616674657220256C66-
+    59 00000265 207365636F6E64732E-
+    59 0000026E 0A00               
+    60                                  
+    61 00000270 5468616E6B20796F75-     finished db "Thank you %s for your participation. May you always reach great heights.", 10,0
+    61 00000279 20257320666F722079-
+    61 00000282 6F7572207061727469-
+    61 0000028B 6369706174696F6E2E-
+    61 00000294 204D617920796F7520-
+    61 0000029D 616C77617973207265-
+    61 000002A6 616368206772656174-
+    61 000002AF 20686569676874732E-
+    61 000002B8 0A00               
+    62                                  
+    63                                  ;INVALID FLOAT
+    64 000002BA 416E206572726F7220-     error db "An error was detected in the input area. You may run this program again.",10,0
+    64 000002C3 776173206465746563-
+    64 000002CC 74656420696E207468-
+    64 000002D5 6520696E7075742061-
+    64 000002DE 7265612E20596F7520-
+    64 000002E7 6D61792072756E2074-
+    64 000002F0 6869732070726F6772-
+    64 000002F9 616D20616761696E2E-
+    64 00000302 0A00               
+    65                                  
+    66 00000304 5468616E6B20796F75-     goodbye db "Thank you %s for your participation. May you never lose sight of the goal.", 10,0
+    66 0000030D 20257320666F722079-
+    66 00000316 6F7572207061727469-
+    66 0000031F 6369706174696F6E2E-
+    66 00000328 204D617920796F7520-
+    66 00000331 6E65766572206C6F73-
+    66 0000033A 65207369676874206F-
+    66 00000343 662074686520676F61-
+    66 0000034C 6C2E0A00           
+    67                                  
+    68                                  segment .bss
+    69                                  ;reserves 256 bytes for each name, title, and drop input
+    70 00000000 <res 00000100>          title: resb INPUT_LEN
+    71 00000100 <res 00000100>          name: resb INPUT_LEN
+    72 00000200 <res 00000020>          user_input: resb 32
+    73 00000220 <res 00000008>          drops: resq 1
+    74                                  
+    75                                  segment .text ; where we put code
+    76                                  height:       ; Enters Program
+    77                                  
+    78 00000000 55                      push    rbp
+    79                                  
+    80 00000001 4889E5                  mov     rbp,rsp
+    81 00000004 53                      push    rbx
+    82 00000005 51                      push    rcx
+    83 00000006 52                      push    rdx
+    84 00000007 56                      push    rsi
+    85 00000008 57                      push    rdi
+    86 00000009 4150                    push    r8
+    87 0000000B 4151                    push    r9
+    88 0000000D 4152                    push    r10
+    89 0000000F 4153                    push    r11
+    90 00000011 4154                    push    r12
+    91 00000013 4155                    push    r13
+    92 00000015 4156                    push    r14
+    93 00000017 4157                    push    r15
+    94 00000019 9C                      pushf
+    95                                  
+    96                                  ;==========================Displays db welcome=================================
+    97 0000001A 6A00                    push qword 0
+    98 0000001C B800000000              mov rax, 0
+    99 00000021 48BF-                   mov rdi, welcome
+    99 00000023 [0800000000000000] 
+   100 0000002B E8(00000000)            call printf
+   101 00000030 58                      pop rax
+   102                                  
+   103                                  ;==========================isplays db name_last================================
+   104 00000031 6A00                    push qword 0
+   105 00000033 B800000000              mov rax, 0 ; indicate we have no floating point argument to pass external funct
+   106 00000038 48BF-                   mov rdi, name_last_input  ; move first argument into register rdi
+   106 0000003A [C900000000000000] 
+   107 00000042 48BE-                   mov rsi, name_last        ; moves db name_last onto rsi
+   107 00000044 [A000000000000000] 
+   108 0000004C E8(00000000)            call printf               ; call external function printf
+   109 00000051 58                      pop rax
+   110                                  
+   111                                  ;=========================Displays db input=====================================
+   112 00000052 6A00                    push qword 0
+   113 00000054 B800000000              mov rax, 0
+   114 00000059 48BF-                   mov rdi, name             ; insert name and last
+   114 0000005B [0001000000000000] 
+   115 00000063 BE00010000              mov rsi, INPUT_LEN        ; allows more space (256)
+   116 00000068 488B1425[00000000]      mov rdx, [stdin]          ; move contents onto [stdin]
+   117 00000070 E8(00000000)            call fgets                ; call fgets
+   118 00000075 58                      pop rax
+   119                                  
+   120                                  ;=========================Remove new line======================================
+   121 00000076 6A00                    push qword 0
+   122 00000078 B800000000              mov rax, 0
+   123 0000007D 48BF-                   mov rdi, name             ; moves name onto rdi
+   123 0000007F [0001000000000000] 
+   124 00000087 E8(00000000)            call strlen               ; calls external function strlen and returns the input legnth of the string
+   125 0000008C 4883E801                sub rax,1                 ; subtracts 1 from the string '\n'
+   126 00000090 C680[00010000]00        mov byte[name + rax], 0   ; replaces byte "\n"
+   127 00000097 58                      pop rax
+   128                                  
+   129                                  ;===========================thanks user========================================
+   130 00000098 6A00                    push qword 0
+   131 0000009A B800000000              mov rax, 0
+   132 0000009F 48BF-                   mov rdi, thanks
+   132 000000A1 [6301000000000000] 
+   133 000000A9 48BE-                   mov rsi, name
+   133 000000AB [0001000000000000] 
+   134 000000B3 E8(00000000)            call printf
+   135 000000B8 58                      pop rax
+   136                                  
+   137                                  ;==========================display job title===================================
+   138 000000B9 6A00                    push qword 0
+   139 000000BB B800000000              mov rax, 0
+   140 000000C0 48BF-                   mov rdi, job_title_input  ;moves job input onto rdi
+   140 000000C2 [6001000000000000] 
+   141 000000CA 48BE-                   mov rsi, job_title        ;moves db job_title onto rsi
+   141 000000CC [CC00000000000000] 
+   142 000000D4 E8(00000000)            call printf               ;call extern function printf
+   143 000000D9 58                      pop rax
+   144                                  
+   145                                  ;=========================display job title input==============================
+   146 000000DA 6A00                    push qword 0
+   147 000000DC B800000000              mov rax, 0
+   148 000000E1 48BF-                   mov rdi, title            ;moves title onto rdi
+   148 000000E3 [0000000000000000] 
+   149 000000EB BE00010000              mov rsi, INPUT_LEN        ;moves 256 bytes onto rsi
+   150 000000F0 488B1425[00000000]      mov rdx, [stdin]          ;dereferrences stdin
+   151 000000F8 E8(00000000)            call fgets                ;call external function fgets
+   152 000000FD 58                      pop rax
+   153                                  
+   154                                  ;=========================remove newline=======================================
+   155 000000FE 6A00                    push qword 0
+   156 00000100 B800000000              mov rax, 0
+   157 00000105 48BF-                   mov rdi, title            ;moves title onto rsi
+   157 00000107 [0000000000000000] 
+   158 0000010F E8(00000000)            call strlen               ;call external function strlen and return the string length
+   159 00000114 4883E801                sub rax, 1                ;subtract 1 from string '\n'
+   160 00000118 C680[00000000]00        mov byte[title + rax], 0  ;replaces the byte with \0
+   161 0000011F 58                      pop rax
+   162                                  
+   163                                  ;==========================Display thanks======================================
+   164 00000120 6A00                    push qword 0
+   165 00000122 B800000000              mov rax, 0
+   166 00000127 48BF-                   mov rdi, thanks           ;moves thanks onto rdi
+   166 00000129 [6301000000000000] 
+   167 00000131 48BE-                   mov rsi, title            ;move the job title stored in title onto rsi
+   167 00000133 [0000000000000000] 
+   168 0000013B E8(00000000)            call printf               ;call external function printf
+   169 00000140 58                      pop rax
+   170                                  
+   171                                  ;==========================Display vantage=====================================
+   172 00000141 6A00                    push qword 0
+   173 00000143 B800000000              mov rax, 0
+   174 00000148 48BF-                   mov rdi, vantage          ;moves db vantage onto rdi
+   174 0000014A [8F01000000000000] 
+   175 00000152 E8(00000000)            call printf               ;call printf
+   176 00000157 58                      pop rax
+   177                                  
+   178                                  ;==========================Display height_input================================
+   179 00000158 6A00                    push qword 0
+   180 0000015A B800000000              mov rax, 0
+   181 0000015F 48BF-                   mov rdi, height_text      ;move db height_text onto rdi
+   181 00000161 [D801000000000000] 
+   182 00000169 E8(00000000)            call printf               ;call printf
+   183 0000016E 58                      pop rax
+   184                                  
+   185                                  ;==========================height input========================================
+   186 0000016F 6A00                    push qword 0
+   187 00000171 6A00                    push qword 0
+   188 00000173 B800000000              mov rax, 0
+   189 00000178 48BF-                   mov rdi, height_input
+   189 0000017A [2302000000000000] 
+   190 00000182 48BE-                   mov rsi, user_input
+   190 00000184 [0002000000000000] 
+   191 0000018C E8(00000000)            call scanf
+   192 00000191 58                      pop rax
+   193 00000192 58                      pop rax
+   194                                  
+   195                                  ;==========================Checks for invalid input===========================
+   196 00000193 B800000000              mov rax, 0
+   197 00000198 48BF-                   mov rdi, user_input       ;stores rsi onto user_input
+   197 0000019A [0002000000000000] 
+   198 000001A2 E8(00000000)            call isFloat              ;moves the user_input onto isFloat
+   199                                  
+   200                                  ;==========================Validates input through isFloat====================
+   201 000001A7 4883F800                cmp rax, 0
+   202 000001AB 0F848B000000            je invalid_input
+   203                                  
+   204 000001B1 B801000000              mov rax, 1                ;the use of xmm0
+   205 000001B6 48BF-                   mov rdi, user_input       ;moves height into rdi
+   205 000001B8 [0002000000000000] 
+   206 000001C0 E8(00000000)            call atof                 ;Convert string to float
+   207 000001C5 F2440F10F8              movsd xmm15, xmm0         ;height is stored into xmm0
+   208                                  
+   209                                  ;================================MATH==========================================
+   210 000001CA F2440F102C25-           movsd xmm13, [value]      ;stores value into xmm13
+   210 000001D0 [00000000]         
+   211 000001D4 F2450F10E7              movsd xmm12, xmm15        ;register xmm15 had the height
+   212 000001D9 F2450F5EE5              divsd xmm12, xmm13        ;divides height / value
+   213 000001DE F2450F51E4              sqrtsd xmm12, xmm12       ;sqrt(height / 9.8)
+   214 000001E3 F2440F112425-           movsd [drops], xmm12
+   214 000001E9 [20020000]         
+   215                                  
+   216                                  ;=============================Display drop=====================================
+   217 000001ED 6A00                    push qword 0
+   218 000001EF 6A00                    push qword 0
+   219 000001F1 B801000000              mov rax, 1
+   220 000001F6 48BF-                   mov rdi, drop
+   220 000001F8 [2602000000000000] 
+   221 00000200 F20F100425-             movsd xmm0, [drops]
+   221 00000205 [20020000]         
+   222 00000209 E8(00000000)            call printf
+   223 0000020E 58                      pop rax
+   224 0000020F 58                      pop rax
+   225                                  
+   226                                  ;===============================finished=======================================
+   227 00000210 6A00                    push qword 0
+   228 00000212 B800000000              mov rax, 0
+   229 00000217 48BF-                   mov rdi, finished
+   229 00000219 [7002000000000000] 
+   230 00000221 48BE-                   mov rsi, name
+   230 00000223 [0001000000000000] 
+   231 0000022B E8(00000000)            call printf
+   232 00000230 58                      pop rax
+   233                                  
+   234 00000231 F20F100425-             movsd xmm0, [drops]
+   234 00000236 [20020000]         
+   235                                  
+   236 0000023A EB47                    jmp end_file
+   237                                  ;================================bad_input======================================
+   238                                  invalid_input:
+   239                                  
+   240                                  ;Displays Error message
+   241 0000023C 6A00                    push qword 0
+   242 0000023E B800000000              mov rax, 0
+   243 00000243 48BF-                   mov rdi, error
+   243 00000245 [BA02000000000000] 
+   244 0000024D E8(00000000)            call printf
+   245 00000252 58                      pop rax
+   246                                  
+   247                                  ;=============================Displays goodbye=================================
+   248 00000253 6A00                    push qword 0
+   249 00000255 B800000000              mov rax, 0
+   250 0000025A 48BF-                   mov rdi, goodbye
+   250 0000025C [0403000000000000] 
+   251 00000264 48BE-                   mov rsi, name
+   251 00000266 [0001000000000000] 
+   252 0000026E E8(00000000)            call printf
+   253 00000273 58                      pop rax
+   254                                  
+   255                                  ;===============================return -1=======================================
+   256 00000274 B801000000              mov rax, 1
+   257 00000279 48F7D8                  neg rax
+   258 0000027C F2480F2AC0              cvtsi2sd xmm0, rax
+   259                                  
+   260 00000281 EB00                    jmp end_file
+   261                                  
+   262                                  end_file:
+   263                                  ;===================Restore the original values to the GPRs=====================
+   264 00000283 9D                      popf                                                        ;Restore rflags
+   265 00000284 415F                    pop        r15                                              ;Restore r15
+   266 00000286 415E                    pop        r14                                              ;Restore r14
+   267 00000288 415D                    pop        r13                                              ;Restore r13
+   268 0000028A 415C                    pop        r12                                              ;Restore r12
+   269 0000028C 415B                    pop        r11                                              ;Restore r11
+   270 0000028E 415A                    pop        r10                                              ;Restore r10
+   271 00000290 4159                    pop        r9                                               ;Restore r9
+   272 00000292 4158                    pop        r8                                               ;Restore r8
+   273 00000294 5F                      pop        rdi                                              ;Restore rdi
+   274 00000295 5E                      pop        rsi                                              ;Restore rsi
+   275 00000296 5A                      pop        rdx                                              ;Restore rdx
+   276 00000297 59                      pop        rcx                                              ;Restore rcx
+   277 00000298 5B                      pop        rbx                                              ;Restore rbx
+   278 00000299 5D                      pop        rbp                                              ;Restore rbp
+   279 0000029A C3                      ret
